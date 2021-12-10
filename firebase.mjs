@@ -3,7 +3,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.1.3/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.1.3/firebase-auth.js";
-import { getFirestore, addDoc, getDocs, collection, onSnapshot, limit, query, orderBy, serverTimestamp} from "https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore.js";
+import { getFirestore, addDoc, deleteDoc, getDocs, collection, onSnapshot, limit, query,where ,orderBy, serverTimestamp, doc, updateDoc} from "https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore.js";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -21,15 +21,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 window.auth = getAuth();
 const db = getFirestore(app);
-const lastestComment = query(collection(db,"comments"),
-orderBy("timestamp","desc"), limit(1));
 
-// exposed functionality
-
-window.postComment = async function(comment){
-    return await addDoc(collection(db,"comments"),{user: auth.currentUser.email,
-    timestamp: serverTimestamp(), comment});
-}
 
 window.signup = function(email, password){
     return createUserWithEmailAndPassword (auth, email, password);
@@ -54,38 +46,39 @@ window.onLogin = function( f ){
 }
 
 //////////////////////////////////////////////
+
 // exposed functionality for db
-window.addComment = function(comment){
-    return addDoc( collection(db, "comments"), 
-        {comment} );
+window.addComment = async function(comment){
+    console.log(comment);
+    return await addDoc( collection(db, "comments"), 
+        {comment,timestamp: serverTimestamp()});
 
 }
 
 window.forEachComment = async function( f ){
-    var docs = await getDocs( collection(db, "comments") );
+    var docs = await getDocs( query(collection(db, "comments"), orderBy("timestamp")));
     console.log(docs);
-    docs.forEach( doc => f(doc.data()) );
+    docs.forEach( doc => f(doc.data(), doc.id) );
     
 }
 ///////////////////////////////////////////////
 
 window.deleteMessage = function(comment){
-    var flag = window.confirm("Are you sure to want delete ?")
-    if(flag){
-
-        db.collection("comments").doc(comment).delete();
+    deleteDoc(doc(db,'comments', comment));
         console.log("Deleted");
 
-    }
 }
 
 window.startListeningForLastestComment = function(f){
     window.stopListeningForLastestComment = onSnapshot(
-        lastestComment, doc=> docs.forEach(doc => f(doc.data(),doc.id)));
+        query(collection(db,"comments"), where("timestamp",">", window.lasttimestamp),
+        orderBy("timestamp","desc"), limit(1)), doc=> doc.forEach(doc => {
+            var data = doc.data();
+            if(data.timestamp)f(data, doc.id)}));
 }
+window.updateMessage = function(id, newComment){
+    const update = doc(db,"comments",id)
+    
+    return updateDoc(update,{comment: newComment});
 
-
- window.onSnapshot = function(lastComment, f){
-    return onSnapshot(collection(db, "comments"),{comment});
-
- }
+}

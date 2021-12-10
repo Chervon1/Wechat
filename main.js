@@ -1,10 +1,41 @@
+'use strict'
 const $ = document.querySelector.bind(document)
 
-function createComment( commentDoc ){
+function createComment(commentDoc,id){
+    window.lasttimestamp=commentDoc.timestamp;
     var div = document.createElement('div');
-    div.innerText = commentDoc.comment;
+    console.log(commentDoc);
+    var textspan=div.appendChild(document.createElement("span"));
+    textspan.innerText = commentDoc.comment;
+    var editbutton = div.appendChild(document.createElement("button"));
+    editbutton.innerText = "Update";
+    editbutton.onclick= async function(){
+        var newcomment = prompt("updated messages");
+        if (newcomment){
+            stopListeningForLastestComment();
+           await updateMessage (id, newcomment );
+           textspan.innerText=newcomment;
+           startListeningForLastestComment( createComment );
+
+        }
+    }
+    div.onmousedown = function(e){
+        var started = Date.now();
+        div.onmouseup = function(e){
+            if(Date.now()>started+3000){
+                div.remove();
+                deleteMessage(div.id);
+            }
+        }
+    }
     $('#comments').appendChild(div);
     div.className = 'comment';
+    div.id=id;
+   /* div.addEventListener('mouseup',()=>{
+        div.remove();
+        deleteMessage(div.id);
+
+    });*/
 }
 
 
@@ -18,10 +49,9 @@ window.onload = function(){
             $('#addCommentDiv').style.display = 'block';
             $('#loginDiv').style.display = 'none';
             $('#signupDiv').style.display = 'none';
-            // todo register new users using on snaphot
-            /*db.collection('comments').onSnapshot(snapshot =>{
-                createComment(snapshot.document);
-            });*/
+            forEachComment(createComment).then(()=>{
+                startListeningForLastestComment( createComment );
+            })
             
         }else{
             //user just logged out
@@ -53,11 +83,6 @@ window.onload = function(){
         logout();
     }
 
-    $('#trash').onclick = function(){
-        deleteMessage( $('#newComment').value)
-        .catch( err => $('.error').innerText = err.message );
-    }
-
     $('#loginBtn').onclick = function(){
         login( $('#email').value, $('#password').value )
         .catch( err => $('.error').innerText = err.message );
@@ -72,10 +97,12 @@ window.onload = function(){
 
         addComment( $('#newComment').value )
         .then( () => {
-            createComment({comment: $('#newComment').value});
+         //  createComment({comment: $('#newComment').value});
             $('#newComment').value = '';
         })
         .catch( err => $('.error').innerText = err.message )
     }
+
+    
 
 }
